@@ -71,7 +71,7 @@
         {
             var crypt = new SHA256Managed();
             var hash = new StringBuilder();
-            foreach (byte theByte in crypt.ComputeHash(Encoding.UTF8.GetBytes(randomString)))
+            foreach (var theByte in crypt.ComputeHash(Encoding.UTF8.GetBytes(randomString)))
             {
                 hash.Append(theByte.ToString(uppercase ? "X2" : "x2"));
             }
