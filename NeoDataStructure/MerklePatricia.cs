@@ -1,12 +1,11 @@
-using System.Text;
-
 namespace com.github.neoresearch.NeoDataStructure
 {
+    using System.Text;
     using System.Linq;
     using System.Collections.Generic;
 
     /// <summary>
-    /// Modified Merkel Patricia.
+    /// Modified Merkel Patricia Tree.
     /// </summary>
     public class MerklePatricia
     {
@@ -15,6 +14,10 @@ namespace com.github.neoresearch.NeoDataStructure
         private readonly Dictionary<string, string[]> db = new Dictionary<string, string[]>();
         private string RootHash;
 
+        /// <summary>
+        /// Get and set the key and valeu pairs of the tree.
+        /// </summary>
+        /// <param name="key">The key that indicates the reference.</param>
         public string this[string key]
         {
             get => RootHash.IsEmpty() ? null : Get(db[RootHash], key.CompactEncodeString());
@@ -30,6 +33,11 @@ namespace com.github.neoresearch.NeoDataStructure
             }
         }
 
+        /// <summary>
+        /// Test is contains a specific key.
+        /// </summary>
+        /// <param name="key">Key to be tested.</param>
+        /// <returns>true in the case the tree contains the key.</returns>
         public bool ContainsKey(string key) => this[key] != null;
 
         private string Get(string[] node, string path)
@@ -100,6 +108,11 @@ namespace com.github.neoresearch.NeoDataStructure
             return tempHash;
         }
 
+        /// <summary>
+        /// Removes a specific value.
+        /// </summary>
+        /// <param name="key">Remove this key from the tree.</param>
+        /// <returns>true is the key was present and sucessifully removed.</returns>
         public bool Remove(string key)
         {
             if (RootHash.IsEmpty())
@@ -157,6 +170,10 @@ namespace com.github.neoresearch.NeoDataStructure
             return nodeHash;
         }
 
+        /// <summary>
+        /// Calculate the tree heigh.
+        /// </summary>
+        /// <returns>The height.</returns>
         public int Height() =>
             RootHash.IsEmpty() ? 0 : (db[RootHash].Length == LEAF_SIZE ? 1 : 1 + db[RootHash].Select(Height).Max());
 
@@ -164,6 +181,10 @@ namespace com.github.neoresearch.NeoDataStructure
             nodeHash.IsEmpty() ? 0 : (db[nodeHash].Length == LEAF_SIZE ? 1 : 1 + db[nodeHash].Select(Height).Max());
 
 
+        /// <summary>
+        /// Checks if the hashes correspond to their nodes.
+        /// </summary>
+        /// <returns>In the case the validation is Ok.</returns>
         public bool Validade() => RootHash.IsEmpty() || Validade(RootHash, db[RootHash]);
 
         private bool Validade(string nodeHash, string[] node)
@@ -190,6 +211,11 @@ namespace com.github.neoresearch.NeoDataStructure
             return true;
         }
 
+        /// <summary>
+        /// Compares two trees.
+        /// </summary>
+        /// <param name="obj">The other tree.</param>
+        /// <returns>true in case the two tree are equal.</returns>
         public override bool Equals(object obj)
         {
             if (!(obj is MerklePatricia))
@@ -225,7 +251,7 @@ namespace com.github.neoresearch.NeoDataStructure
 
             if (nodeA.Length == LEAF_SIZE)
             {
-                return nodeA[0].IsEquals(nodeB[0], true);
+                return nodeA[0].IsEquals(nodeB[0], true) && nodeA[2].IsEquals(nodeB[2], true);
             }
 
             for (var i = 0; i < nodeA.Length - 2; i++)
@@ -241,7 +267,7 @@ namespace com.github.neoresearch.NeoDataStructure
                 }
             }
 
-            return true;
+            return nodeA[nodeB.Length - 1].IsEquals(nodeB[nodeB.Length - 1], true);
         }
 
         public static bool operator ==(MerklePatricia b1, MerklePatricia b2)
@@ -257,6 +283,15 @@ namespace com.github.neoresearch.NeoDataStructure
         public static bool operator !=(MerklePatricia b1, MerklePatricia b2)
         {
             return !(b1 == b2);
+        }
+
+        /// <summary>
+        /// Generates a JSON for the tree.
+        /// </summary>
+        /// <returns>The generated JSON tree.</returns>
+        public override string ToString()
+        {
+            return RootHash.IsEmpty() ? "{}" : $"{nodeToString(db[RootHash])}";
         }
 
         private string nodeToString(string[] node)
@@ -289,11 +324,6 @@ namespace com.github.neoresearch.NeoDataStructure
 
             resp.Append("}");
             return resp.ToString();
-        }
-
-        public override string ToString()
-        {
-            return RootHash.IsEmpty() ? "{}" : $"{nodeToString(db[RootHash])}";
         }
     }
 }
