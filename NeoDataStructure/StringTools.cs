@@ -29,5 +29,7 @@ namespace com.github.neoresearch.NeoDataStructure
 
             return linha.ToString().Sha256();
         }
+
+        public static int FromHex(this string text) => int.Parse(text, System.Globalization.NumberStyles.HexNumber);
     }
 }

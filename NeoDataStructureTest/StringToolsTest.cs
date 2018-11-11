@@ -48,5 +48,15 @@ namespace com.github.neoresearch.NeoDataStructureTest
             Assert.NotEqual(b.Hash(), d.Hash());
             Assert.Equal(d.Hash(), e.Hash());
         }
+
+        [Fact]
+        public void ToHex()
+        {
+            Assert.Equal(0, "0".FromHex());
+            Assert.Equal(1, "1".FromHex());
+            Assert.Equal(10, "a".FromHex());
+            Assert.Equal(15, "f".FromHex());
+            Assert.Equal(16, "10".FromHex());
+        }
     }
 }

@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace com.github.neoresearch.NeoDataStructureTest
 {
     using Xunit;
@@ -86,6 +88,7 @@ namespace com.github.neoresearch.NeoDataStructureTest
             }
 
             RemoverTestar("oi", "bala");
+//            merklePatricia.Remove("oi");
         }
 
         [Fact]
@@ -131,6 +134,68 @@ namespace com.github.neoresearch.NeoDataStructureTest
 
             mpB.Remove("oi");
             Assert.Equal(mpA, mpB);
+        }
+
+        [Fact]
+        public void Lista()
+        {
+            var lista = new[] {"oi", "oi1", "oi2", "oi12", "bola", "birosca123", "ca123", "oi123"};
+            var mp = new MerklePatricia();
+            foreach (var it in lista)
+            {
+                mp[it] = it.CompactEncodeString();
+                System.Console.WriteLine($"{mp}");
+            }
+        }
+
+        [Fact]
+        public void Dictionary()
+        {
+            var exemplo = new Dictionary<string, string>
+            {
+                ["oi"] = "bala",
+                ["oi1"] = "bala1",
+                ["oi2"] = "bala2",
+                ["oi12"] = "bala12",
+                ["bola"] = "oi",
+                ["birosca123"] = "bruca123",
+                ["ca123"] = "que123",
+                ["oi123"] = "bala123"
+            };
+
+            var merklePatricia = new MerklePatricia();
+            foreach (var keyValue in exemplo)
+            {
+                merklePatricia[keyValue.Key] = keyValue.Value;
+            }
+
+            foreach (var keyValue in exemplo)
+            {
+                Assert.Equal(keyValue.Value, merklePatricia[keyValue.Key]);
+            }
+        }
+
+        [Fact]
+        public void PatriciaToString()
+        {
+            var mp = new MerklePatricia();
+            System.Console.WriteLine($"a:\n {mp}");
+            mp["oi"] = "bala";
+            System.Console.WriteLine($"a:\n {mp}");
+            mp["oi1"] = "bala1";
+            System.Console.WriteLine($"a:\n {mp}");
+            mp["oi2"] = "bala2";
+            System.Console.WriteLine($"a:\n {mp}");
+            mp["oi12"] = "bala12";
+            System.Console.WriteLine($"a:\n {mp}");
+            mp["bola"] = "123bala12";
+            System.Console.WriteLine($"a:\n {mp}");
+            mp["birosca123"] = "13bala12";
+            System.Console.WriteLine($"a:\n {mp}");
+            mp["ca123"] = "3bala12";
+            mp["oi123"] = "asfbala12";
+            System.Console.WriteLine($"a:\n {mp}");
+
         }
     }
 }

@@ -1,9 +1,7 @@
+using System.Text;
+
 namespace com.github.neoresearch.NeoDataStructure
 {
-    using System.Linq.Expressions;
-    using System.Security.Cryptography.X509Certificates;
-    using System;
-    using System.Text;
     using System.Linq;
     using System.Collections.Generic;
 
@@ -15,7 +13,7 @@ namespace com.github.neoresearch.NeoDataStructure
         private const int LEAF_SIZE = 3;
         private const int NODE_SIZE = 18;
         private readonly Dictionary<string, string[]> db = new Dictionary<string, string[]>();
-        private string RootHash = string.Empty;
+        private string RootHash;
 
         public string this[string key]
         {
@@ -23,12 +21,12 @@ namespace com.github.neoresearch.NeoDataStructure
             set
             {
                 var node = RootHash.IsEmpty() ? null : db[RootHash];
-                if (db.ContainsKey(RootHash))
+                if (!RootHash.IsEmpty() && db.ContainsKey(RootHash))
                 {
                     db.Remove(RootHash);
                 }
 
-                RootHash = Append(node, key.CompactEncodeString(), key, value);
+                RootHash = Set(node, key.CompactEncodeString(), key, value);
             }
         }
 
@@ -38,31 +36,31 @@ namespace com.github.neoresearch.NeoDataStructure
         {
             while (true)
             {
-                if (path == string.Empty)
-                {
-                    return node[node.Length - 1];
-                }
-
-                switch (node.Length)
-                {
-                    case LEAF_SIZE when node[0].Substring(1) == path:
-                        return node[node.Length - 1];
-                    case LEAF_SIZE:
-                        return null;
-                }
-
-                int kint = int.Parse(path.Substring(0, 1), System.Globalization.NumberStyles.HexNumber);
-                if (node[kint] == null)
+                if (node == null)
                 {
                     return null;
                 }
 
+                if (node.Length == LEAF_SIZE)
+                {
+                    return node[0].Substring(1) == path ? node[node.Length - 1] : null;
+                }
+
+                if (path.IsEmpty())
+                {
+                    break;
+                }
+
+                int kint = path.Substring(0, 1).FromHex();
+                if (node[kint] == null) return null;
                 node = db[node[kint]];
                 path = path.Substring(1);
             }
+
+            return node[node.Length - 1];
         }
 
-        private string Append(string[] node, string path, string key, string value)
+        private string Set(string[] node, string path, string key, string value)
         {
             if (node == null)
             {
@@ -70,10 +68,10 @@ namespace com.github.neoresearch.NeoDataStructure
             }
             else if (node.Length == LEAF_SIZE)
             {
-                var innerHash = Append(new string[NODE_SIZE], node[0], node[1], node[2]);
+                var innerHash = Set(new string[NODE_SIZE], node[0].Substring(1), node[1], node[2]);
                 node = db[innerHash];
                 db.Remove(innerHash);
-                innerHash = Append(node, path, key, value);
+                innerHash = Set(node, path, key, value);
                 node = db[innerHash];
             }
             else
@@ -85,7 +83,7 @@ namespace com.github.neoresearch.NeoDataStructure
                 }
                 else
                 {
-                    int kint = int.Parse(path.Substring(0, 1), System.Globalization.NumberStyles.HexNumber);
+                    int kint = path.Substring(0, 1).FromHex();
                     var innerHash = node[kint];
                     var innerNode = innerHash != null ? db[innerHash] : null;
                     if (innerHash != null && db.ContainsKey(innerHash))
@@ -93,7 +91,7 @@ namespace com.github.neoresearch.NeoDataStructure
                         db.Remove(innerHash);
                     }
 
-                    node[kint] = Append(innerNode, path.Substring(1), key, value);
+                    node[kint] = Set(innerNode, path.Substring(1), key, value);
                 }
             }
 
@@ -129,7 +127,7 @@ namespace com.github.neoresearch.NeoDataStructure
                     return nodeHash;
             }
 
-            int kint = int.Parse(path.Substring(0, 1), System.Globalization.NumberStyles.HexNumber);
+            int kint = path.Substring(0, 1).FromHex();
             if (node[kint] == null)
             {
                 return nodeHash;
@@ -259,6 +257,43 @@ namespace com.github.neoresearch.NeoDataStructure
         public static bool operator !=(MerklePatricia b1, MerklePatricia b2)
         {
             return !(b1 == b2);
+        }
+
+        private string nodeToString(string[] node)
+        {
+            if (node == null)
+            {
+                return "{}";
+            }
+
+            if (node.Length == LEAF_SIZE)
+            {
+                return $"[\"{node[0]}\",\"{node[1]}\",\"{node[2]}\"]";
+            }
+
+            var resp = new StringBuilder("{");
+            var virgula = false;
+            for (var i = 0; i < node.Length - 2; i++)
+            {
+                var nit = node[i];
+                if (nit == null) continue;
+                resp.Append(virgula ? "," : "").Append($"\"{i}\":{nodeToString(db[nit])}");
+                virgula = true;
+            }
+
+            if (node[node.Length - 2] != null)
+            {
+                resp.Append(virgula ? "," : "").Append($"\"{node.Length - 2}\":\"{node[node.Length - 2]}\"");
+                resp.Append(virgula ? "," : "").Append($"\"{node.Length - 1}\":\"{node[node.Length - 1]}\"");
+            }
+
+            resp.Append("}");
+            return resp.ToString();
+        }
+
+        public override string ToString()
+        {
+            return RootHash.IsEmpty() ? "{}" : $"{nodeToString(db[RootHash])}";
         }
     }
 }
