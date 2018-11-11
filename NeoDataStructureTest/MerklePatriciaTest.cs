@@ -72,22 +72,33 @@ namespace com.github.neoresearch.NeoDataStructureTest
         [Fact]
         public void Remove()
         {
-            var merklePatricia = new MerklePatricia();
+            var mp = new MerklePatricia();
 
             void RemoverTestar(string x, string y)
             {
-                merklePatricia[x] = y;
-                Assert.True(merklePatricia.ContainsKey(x));
-                Assert.False(merklePatricia.ContainsKey(x + "123"));
-                Assert.Equal(y, merklePatricia[x]);
-                Assert.Null(merklePatricia[x + "123k"]);
+                mp[x] = y;
+                Assert.True(mp.ContainsKey(x));
+                Assert.False(mp.ContainsKey(x + "123"));
+                Assert.Equal(y, mp[x]);
+                Assert.Null(mp[x + "123k"]);
 
-                Assert.True(merklePatricia.Remove(x));
-                Assert.False(merklePatricia.Remove(x));
+                Assert.True(mp.Remove(x));
+                Assert.False(mp.Remove(x));
             }
 
             RemoverTestar("oi", "bala");
-//            merklePatricia.Remove("oi");
+            mp.Remove("oi");
+            Assert.False(mp.ContainsKey("oi"));
+
+            mp["123"] = "abc";
+            mp["a123"] = "1abc";
+            Assert.Equal(2, mp.Count());
+            
+            Assert.False(mp.Remove("b123"));
+            Assert.Equal(2, mp.Count());
+            Assert.True(mp.Remove("a123"));
+            // TODO Solve problem on the remove method, not removing from _db
+            Assert.Equal(1, mp.Count());
         }
 
         [Fact]
@@ -194,6 +205,47 @@ namespace com.github.neoresearch.NeoDataStructureTest
             mp["ca123"] = "3bala12";
             mp["oi123"] = "asfbala12";
             System.Console.WriteLine($"a:\n {mp}");
+        }
+
+        [Fact]
+        public void PatriciaCount()
+        {
+            var mp = new MerklePatricia();
+            Assert.Equal(0, mp.Count());
+            
+            mp["oi"] = "oi";
+            Assert.Equal(1, mp.Count());
+            
+            mp["oi"] = "oi";
+            Assert.Equal(1, mp.Count());
+            
+            mp["oi"] = "oi1";
+            Assert.Equal(1, mp.Count());
+            
+            mp["oi1"] = "oi1";
+            mp["oi2"] = "oi2";
+            Assert.Equal(3, mp.Count());
+            
+            mp["bala"] = "bala2";
+            Assert.Equal(4, mp.Count());
+        }
+
+        [Fact]
+        public void ContainsValue()
+        {
+            var mp = new MerklePatricia
+            {
+                ["aoi"] = "oi",
+                ["boi2"] = "oi2",
+                ["coi1"] = "oi3"
+            };
+            Assert.True(mp.ContainsValue("oi"));
+            Assert.True(mp.ContainsValue("oi2"));
+            Assert.True(mp.ContainsValue("oi3"));
+            
+            Assert.False(mp.ContainsValue("aoi"));
+            Assert.False(mp.ContainsValue("boi2"));
+            Assert.False(mp.ContainsValue("coi3"));
         }
     }
 }

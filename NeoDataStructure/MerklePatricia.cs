@@ -34,11 +34,19 @@ namespace com.github.neoresearch.NeoDataStructure
         }
 
         /// <summary>
-        /// Test is contains a specific key.
+        /// Test if contains a specific key.
         /// </summary>
         /// <param name="key">Key to be tested.</param>
         /// <returns>true in the case the tree contains the key.</returns>
         public bool ContainsKey(string key) => this[key] != null;
+
+        /// <summary>
+        /// Test if the tree contains a specific value.
+        /// Takes O(n) operations.
+        /// </summary>
+        /// <param name="value">Value to look for.</param>
+        /// <returns>true if the value is present.</returns>
+        public bool ContainsValue(string value) => _db.Any(x => x.Value[x.Value.Length - 1] == value);
 
         private string Get(string[] node, string path)
         {
@@ -121,52 +129,88 @@ namespace com.github.neoresearch.NeoDataStructure
             }
 
             var removido = Remove(_rootHash, key.CompactEncodeString());
-            _db.Remove(_rootHash);
             var resp = removido != _rootHash;
-            _rootHash = removido;
+            if (resp)
+            {
+                _db.Remove(_rootHash);
+            }
 
+            _rootHash = removido;
             return resp;
         }
 
         private string Remove(string nodeHash, string path)
         {
             var node = _db[nodeHash];
-            switch (node.Length)
+            if (node.Length == 0)
             {
-                case LeafSize when node[0].Substring(1) == path:
-                    _db.Remove(nodeHash);
-                    return null;
-                case LeafSize:
-                    return nodeHash;
+                return null;
             }
 
-            int kint = path.Substring(0, 1).FromHex();
-            if (node[kint] == null)
+            if (node.Length == LeafSize)
             {
+                if (node[0].Substring(1) == path)
+                {
+                    _db.Remove(nodeHash);
+                    return null;
+                }
+
+                _db[nodeHash] = node;
                 return nodeHash;
             }
 
-            var innerNodeHash = Remove(node[kint], path.Substring(1));
-            if (node[kint] != innerNodeHash)
+            if (path.IsEmpty())
             {
-                _db.Remove(node[kint]);
-                node[kint] = innerNodeHash;
-                if (node[node.Length - 2] == null && node.Count(x => x != null) == 1)
+                node[node.Length - 2] = node[node.Length - 1] = null;
+            }
+            else
+            {
+                int kint = path.Substring(0, 1).FromHex();
+                if (node[kint] != null)
                 {
-                    var index = 0;
-                    while (node[index] == null)
+                    var innerHash = Remove(node[kint], path.Substring(1));
+                    if (node[kint] != innerHash)
                     {
-                        index++;
+                        _db.Remove(node[kint]);
+                        node[kint] = innerHash;
+
+                        int contar = 0;
+                        int indexInnerNode = 0;
+                        for (int i = 0; i < node.Length - 2; i++)
+                        {
+                            if (node[i] != null)
+                            {
+                                contar++;
+                                indexInnerNode = i;
+                            }
+                        }
+
+                        if (contar == 0)
+                        {
+                            node = new[] {"2", node[node.Length - 2], node[node.Length - 1]};
+                        }
+                        else if (contar == 1)
+                        {
+                            if (node[node.Length - 1] == null)
+                            {
+                                var innerNode = _db[node[indexInnerNode]];
+                                if (innerNode.Length == LeafSize)
+                                {
+                                    node = new[]
+                                    {
+                                        2 + innerNode[0].Length % 2 + "" + indexInnerNode + innerNode[0].Substring(1),
+                                        innerNode[innerNode.Length - 2],
+                                        innerNode[innerNode.Length - 1]
+                                    };
+                                }
+                            }
+                        }
                     }
-
-//                    node = db[node[index]];
                 }
-
-                var removedHash = node.Hash();
-                _db[removedHash] = node;
-                return removedHash;
             }
 
+            nodeHash = node.Hash();
+            _db[nodeHash] = node;
             return nodeHash;
         }
 
@@ -330,5 +374,7 @@ namespace com.github.neoresearch.NeoDataStructure
             resp.Append("}");
             return resp.ToString();
         }
+
+        public int Count() => _db.Count(x => x.Value[x.Value.Length - 1] != null);
     }
 }
