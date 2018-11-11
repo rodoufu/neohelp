@@ -2,6 +2,9 @@ namespace com.github.neoresearch.NeoDataStructure
 {
     using System.Text;
 
+    /// <summary>
+    /// String help functions.
+    /// </summary>
     public static class StringTools
     {
         /// <summary>
