@@ -1,9 +1,8 @@
-using System.Collections.Generic;
-
 namespace com.github.neoresearch.NeoDataStructureTest
 {
-    using Xunit;
+    using System.Collections.Generic;
     using NeoDataStructure;
+    using Xunit;
 
     public class MerklePatriciaTest
     {
@@ -195,7 +194,6 @@ namespace com.github.neoresearch.NeoDataStructureTest
             mp["ca123"] = "3bala12";
             mp["oi123"] = "asfbala12";
             System.Console.WriteLine($"a:\n {mp}");
-
         }
     }
 }

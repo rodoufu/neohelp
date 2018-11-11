@@ -32,11 +32,5 @@ namespace com.github.neoresearch.NeoDataStructureTest
             Assert.Equal("87F633634CC4B02F628685651F0A29B7BFA22A0BD841F725C6772DD00A58D489", "oi".Sha256(true));
             Assert.Equal("4FDACBCA234070237E8561232C1BEE38250D1B8446B7AD787A61737B4406009D", "batatinha".Sha256(true));
         }
-
-        [Fact]
-        public void CompactEncodeString()
-        {
-            Assert.Equal("6f69", "oi".CompactEncodeString());
-        }
     }
 }
