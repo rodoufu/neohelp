@@ -47,7 +47,7 @@
             var o = new List<byte>();
             for (var i = 0; i < hexarray.Length; i += 2)
             {
-                o.Append((byte) (16 * hexarray[i] + hexarray[i + 1]));
+                o.Add((byte) (16 * hexarray[i] + hexarray[i + 1]));
             }
 
             return o.ToArray();
