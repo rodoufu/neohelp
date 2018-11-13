@@ -99,6 +99,12 @@ namespace com.github.neoresearch.NeoDataStructureTest
             Assert.True(mp.Remove("a123"));
             // TODO Solve problem on the remove method, not removing from _db
             Assert.Equal(1, mp.Count());
+            Assert.False(mp.ContainsKey("a123"));
+            Assert.True(mp.ContainsKey("123"));
+            Assert.True(mp.ContainsKey("123"));
+
+            var mp2 = new MerklePatricia {["123"] = "abc"};
+            Assert.Equal(mp2, mp);
         }
 
         [Fact]

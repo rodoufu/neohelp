@@ -193,9 +193,11 @@ namespace com.github.neoresearch.NeoDataStructure
                         {
                             if (node[node.Length - 1] == null)
                             {
-                                var innerNode = _db[node[indexInnerNode]];
+                                var innerNodeHash = node[indexInnerNode];
+                                var innerNode = _db[innerNodeHash];
                                 if (innerNode.Length == LeafSize)
                                 {
+                                    _db.Remove(innerNodeHash);
                                     node = new[]
                                     {
                                         2 + innerNode[0].Length % 2 + "" + indexInnerNode + innerNode[0].Substring(1),
