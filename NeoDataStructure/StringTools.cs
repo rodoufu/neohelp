@@ -1,5 +1,7 @@
 namespace com.github.neoresearch.NeoDataStructure
 {
+    using System;
+    using System.Linq;
     using System.Text;
 
     /// <summary>
@@ -56,5 +58,17 @@ namespace com.github.neoresearch.NeoDataStructure
         /// <param name="text">Hex string to be converted.</param>
         /// <returns>The integer value.</returns>
         public static int FromHex(this string text) => int.Parse(text, System.Globalization.NumberStyles.HexNumber);
+
+        /// <summary>
+        /// Generates a random string.
+        /// </summary>
+        /// <param name="length">The required size.</param>
+        /// <returns>The generated string</returns>
+        public static string RandomString(int length)
+        {
+            var random = new Random();
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            return new string(Enumerable.Repeat(chars, length).Select(s => s[random.Next(s.Length)]).ToArray());
+        }
     }
 }

@@ -58,5 +58,11 @@ namespace com.github.neoresearch.NeoDataStructureTest
             Assert.Equal(15, "f".FromHex());
             Assert.Equal(16, "10".FromHex());
         }
+
+        [Fact]
+        public void RandomString()
+        {
+            Assert.Equal(10, StringTools.RandomString(10).Length);
+        }
     }
 }

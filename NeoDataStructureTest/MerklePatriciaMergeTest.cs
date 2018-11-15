@@ -197,8 +197,8 @@ namespace com.github.neoresearch.NeoDataStructureTest
                 ["zza"] = "zza".CompactEncodeString()
             };
             Assert.True(mpD.Validade());
-            System.Console.WriteLine($"C:{mpC}");
-            System.Console.WriteLine($"merge:{mpMerge}");
+//            System.Console.WriteLine($"C:{mpC}");
+//            System.Console.WriteLine($"merge:{mpMerge}");
             Assert.Equal(mpC, mpD);
             
             Assert.Equal(mpC, mpMerge);
