@@ -1,3 +1,5 @@
+using System;
+
 namespace com.github.neoresearch.NeoDataStructure
 {
     using System.Text;
@@ -6,6 +8,7 @@ namespace com.github.neoresearch.NeoDataStructure
 
     /// <summary>
     /// Modified Merkel Patricia Tree.
+    /// Note: It is not a thread safe implementation.
     /// </summary>
     public class MerklePatricia
     {
@@ -20,7 +23,7 @@ namespace com.github.neoresearch.NeoDataStructure
         /// <param name="key">The key that indicates the reference.</param>
         public string this[string key]
         {
-            get => _rootHash.IsEmpty() ? null : Get(_db[_rootHash], key.CompactEncodeString());
+            get => _rootHash.IsEmpty() ? null : Get(_db[_rootHash], ConvertToNibble(key));
             set
             {
                 var node = _rootHash.IsEmpty() ? null : _db[_rootHash];
@@ -29,9 +32,12 @@ namespace com.github.neoresearch.NeoDataStructure
                     _db.Remove(_rootHash);
                 }
 
-                _rootHash = Set(node, key.CompactEncodeString(), key, value);
+                _rootHash = Set(node, ConvertToNibble(key), key, value);
             }
         }
+
+        // Encoding.UTF8.GetBytes(value).ByteToHexString();
+        private static string ConvertToNibble(string value) => value.CompactEncodeString();
 
         /// <summary>
         /// Test if contains a specific key.
@@ -84,11 +90,18 @@ namespace com.github.neoresearch.NeoDataStructure
             }
             else if (node.Length == LeafSize)
             {
-                var innerHash = Set(new string[NodeSize], node[0].Substring(1), node[1], node[2]);
-                node = _db[innerHash];
-                _db.Remove(innerHash);
-                innerHash = Set(node, path, key, value);
-                node = _db[innerHash];
+                if (path == node[0].Substring(1))
+                {
+                    node[2] = value;
+                }
+                else
+                {
+                    var innerHash = Set(new string[NodeSize], node[0].Substring(1), node[1], node[2]);
+                    node = _db[innerHash];
+                    _db.Remove(innerHash);
+                    innerHash = Set(node, path, key, value);
+                    node = _db[innerHash];
+                }
             }
             else
             {
@@ -128,7 +141,7 @@ namespace com.github.neoresearch.NeoDataStructure
                 return false;
             }
 
-            var removido = Remove(_rootHash, key.CompactEncodeString());
+            var removido = Remove(_rootHash, ConvertToNibble(key));
             var resp = removido != _rootHash;
             if (resp)
             {
@@ -316,6 +329,117 @@ namespace com.github.neoresearch.NeoDataStructure
             return nodeA[nodeB.Length - 1].IsEquals(nodeB[nodeB.Length - 1], true);
         }
 
+        /// <summary>
+        /// Indicates if the tree is empty.
+        /// </summary>
+        /// <returns>true when there is no value on the tree.</returns>
+        public bool IsEmpty() => Count() == 0;
+
+        /// <summary>
+        /// Merges this tree with anoter.
+        /// </summary>
+        /// <param name="mpB">The other tree to be merged with.</param>
+        /// <returns>The merged one tree.</returns>
+        public MerklePatricia Merge(MerklePatricia mpB)
+        {
+            var resp = new MerklePatricia();
+            resp._rootHash = resp.Merge(this, mpB, _rootHash, mpB._rootHash);
+            return resp;
+        }
+
+        private string Merge(MerklePatricia mpA, MerklePatricia mpB, string hashA, string hashB, string lastNibble = "")
+        {
+            if (hashA == null && hashB == null)
+            {
+                return null;
+            }
+
+            if (hashA == null)
+            {
+                return MergeCopy(hashB, mpB);
+            }
+
+            if (hashB == null)
+            {
+                return MergeCopy(hashA, mpA);
+            }
+
+            var nodeA = mpA._db[hashA];
+            var nodeB = mpB._db[hashB];
+
+            string[] node = null;
+            string nodeHash = null;
+            if (nodeA.Length == NodeSize && nodeB.Length == NodeSize)
+            {
+                node = new string[NodeSize];
+                node[NodeSize - 2] = nodeB[NodeSize - 2];
+                node[NodeSize - 1] = nodeB[NodeSize - 1];
+                if (nodeA[NodeSize - 1] != null)
+                {
+                    node[NodeSize - 2] = nodeA[NodeSize - 2];
+                    node[NodeSize - 1] = nodeA[NodeSize - 1];
+                }
+
+                for (var i = 0; i < NodeSize - 2; i++)
+                {
+                    if (nodeA[i] != null || nodeB[i] != null)
+                    {
+                        node[i] = Merge(mpA, mpB, nodeA[i], nodeB[i], i.ToString("x"));
+                    }
+                }
+
+                nodeHash = node.Hash();
+            }
+            else if (nodeA.Length == LeafSize && nodeB.Length == LeafSize)
+            {
+                node = new[] {nodeA[0], nodeA[1], nodeA[2]};
+                nodeHash = hashA;
+            }
+            else if (nodeA.Length == NodeSize)
+            {
+                nodeHash = MergeCopy(hashA, mpA);
+                node = _db[nodeHash];
+                _db.Remove(nodeHash);
+                nodeHash = Set(node, 2 + nodeB[0].Length % 2 + lastNibble + nodeB[0].Substring(1), nodeB[1], nodeB[2]);
+                node = _db[nodeHash];
+            }
+            else if (nodeB.Length == NodeSize)
+            {
+                nodeHash = MergeCopy(hashB, mpB);
+                node = _db[nodeHash];
+                _db.Remove(nodeHash);
+                nodeHash = Set(node, 2 + nodeA[0].Length % 2 + lastNibble + nodeA[0].Substring(1), nodeA[1], nodeA[2]);
+                node = _db[nodeHash];
+            }
+
+            _db[nodeHash] = node;
+            return nodeHash;
+        }
+
+        private string MergeCopy(string hashNode, MerklePatricia mp)
+        {
+            var node = mp._db[hashNode];
+            if (node.Length != LeafSize)
+            {
+                var mpNode = node;
+                node = new string[NodeSize];
+                node[NodeSize - 2] = mpNode[NodeSize - 2];
+                node[NodeSize - 1] = mpNode[NodeSize - 1];
+                for (var i = 0; i < node.Length - 2; i++)
+                {
+                    if (mpNode[i] != null)
+                    {
+                        node[i] = MergeCopy(mpNode[i], mp);
+                    }
+                }
+
+                hashNode = node.Hash();
+            }
+
+            _db[hashNode] = node;
+            return hashNode;
+        }
+
         public static bool operator ==(MerklePatricia b1, MerklePatricia b2)
         {
             if ((object) b1 == null)
@@ -370,7 +494,7 @@ namespace com.github.neoresearch.NeoDataStructure
             if (node[node.Length - 2] != null)
             {
                 resp.Append(virgula ? "," : "").Append($"\"{node.Length - 2}\":\"{node[node.Length - 2]}\"");
-                resp.Append(virgula ? "," : "").Append($"\"{node.Length - 1}\":\"{node[node.Length - 1]}\"");
+                resp.Append($",\"{node.Length - 1}\":\"{node[node.Length - 1]}\"");
             }
 
             resp.Append("}");
