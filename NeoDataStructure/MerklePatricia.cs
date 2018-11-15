@@ -1,5 +1,3 @@
-using System;
-
 namespace com.github.neoresearch.NeoDataStructure
 {
     using System.Text;
@@ -400,7 +398,7 @@ namespace com.github.neoresearch.NeoDataStructure
                 nodeHash = MergeCopy(hashA, mpA);
                 node = _db[nodeHash];
                 _db.Remove(nodeHash);
-                nodeHash = Set(node, 2 + nodeB[0].Length % 2 + lastNibble + nodeB[0].Substring(1), nodeB[1], nodeB[2]);
+                nodeHash = Set(node, nodeB[0].Substring(1), nodeB[1], nodeB[2]);
                 node = _db[nodeHash];
             }
             else if (nodeB.Length == NodeSize)
@@ -408,7 +406,7 @@ namespace com.github.neoresearch.NeoDataStructure
                 nodeHash = MergeCopy(hashB, mpB);
                 node = _db[nodeHash];
                 _db.Remove(nodeHash);
-                nodeHash = Set(node, 2 + nodeA[0].Length % 2 + lastNibble + nodeA[0].Substring(1), nodeA[1], nodeA[2]);
+                nodeHash = Set(node, nodeA[0].Substring(1), nodeA[1], nodeA[2]);
                 node = _db[nodeHash];
             }
 

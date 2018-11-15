@@ -198,7 +198,7 @@ namespace com.github.neoresearch.NeoDataStructureTest
             };
             Assert.True(mpD.Validade());
             System.Console.WriteLine($"C:{mpC}");
-            System.Console.WriteLine($"D:{mpD}");
+            System.Console.WriteLine($"merge:{mpMerge}");
             Assert.Equal(mpC, mpD);
             
             Assert.Equal(mpC, mpMerge);
