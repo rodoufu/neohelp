@@ -97,8 +97,8 @@
         /// </summary>
         /// <param name="hexchar">Byte array to be converted.</param>
         /// <returns>The converted string.</returns>
-        public static string ByteToHexString(this byte[] hexchar) =>
-            string.Join(" ", hexchar.Select(x => x.ByteToHexString()).ToList());
+        public static string ByteToHexString(this byte[] hexchar, bool useSpace = true) =>
+            string.Join(useSpace ? " " : "", hexchar.Select(x => x.ByteToHexString()).ToList());
 
         /// <summary>
         /// Converts a string to SHA256.

@@ -30,12 +30,12 @@ namespace com.github.neoresearch.NeoDataStructure
                     _db.Remove(_rootHash);
                 }
 
-                _rootHash = Set(node, ConvertToNibble(key), key, value);
+                _rootHash = Set(node, ConvertToNibble(key), "0-" + key, value);
             }
         }
 
-        // Encoding.UTF8.GetBytes(value).ByteToHexString();
-        private static string ConvertToNibble(string value) => value.CompactEncodeString();
+        // value.CompactEncodeString();
+        private static string ConvertToNibble(string value) => Encoding.UTF8.GetBytes(value).ByteToHexString(false);
 
         /// <summary>
         /// Test if contains a specific key.
@@ -71,6 +71,7 @@ namespace com.github.neoresearch.NeoDataStructure
                     break;
                 }
 
+                // TODO Improve not using hex notation
                 int kint = path.Substring(0, 1).FromHex();
                 if (node[kint] == null) return null;
                 node = _db[node[kint]];
@@ -80,17 +81,39 @@ namespace com.github.neoresearch.NeoDataStructure
             return node[node.Length - 1];
         }
 
+        private static string KeyHash(string key) => key.StartsWith("0-") ? "0+" + key.Sha256() : key;
+
         private string Set(string[] node, string path, string key, string value)
         {
             if (node == null)
             {
-                node = new[] {2 + path.Length % 2 + path, key, value};
+                node = new[] {2 + path.Length % 2 + path, KeyHash(key), value};
             }
             else if (node.Length == LeafSize)
             {
                 if (path == node[0].Substring(1))
                 {
                     node[2] = value;
+                }
+                else if (path[0] == node[0][1])
+                {
+                    var pos = 0;
+                    for (;;)
+                    {
+                        if (pos + 1 == path.Length || pos + 2 == node[0].Length || path[pos + 1] != node[0][pos + 2])
+                        {
+                            break;
+                        }
+
+                        pos++;
+                    }
+
+                    var newNode = new[] { "2" + path.Substring(0, pos + 1), null};
+                    var innerHash = Set(new string[NodeSize], node[0].Substring(pos + 2), node[1], node[2]);
+                    var innerNode = _db[innerHash];
+                    _db.Remove(innerHash);
+                    newNode[1] = Set(innerNode, path.Substring(pos + 1), key, value);
+                    node = newNode;
                 }
                 else
                 {
@@ -105,11 +128,12 @@ namespace com.github.neoresearch.NeoDataStructure
             {
                 if (path.IsEmpty())
                 {
-                    node[node.Length - 2] = key;
+                    node[node.Length - 2] = KeyHash(key);
                     node[node.Length - 1] = value;
                 }
                 else
                 {
+                    // TODO Improve not using hex notation
                     int kint = path.Substring(0, 1).FromHex();
                     var innerHash = node[kint];
                     var innerNode = innerHash != null ? _db[innerHash] : null;
@@ -176,6 +200,7 @@ namespace com.github.neoresearch.NeoDataStructure
             }
             else
             {
+                // TODO Improve not using hex notation
                 int kint = path.Substring(0, 1).FromHex();
                 if (node[kint] != null)
                 {
@@ -211,7 +236,8 @@ namespace com.github.neoresearch.NeoDataStructure
                                     _db.Remove(innerNodeHash);
                                     node = new[]
                                     {
-                                        2 + innerNode[0].Length % 2 + "" + indexInnerNode + innerNode[0].Substring(1),
+                                        2 + innerNode[0].Length % 2 + "" + indexInnerNode.ToString("x") +
+                                        innerNode[0].Substring(1),
                                         innerNode[innerNode.Length - 2],
                                         innerNode[innerNode.Length - 1]
                                     };
