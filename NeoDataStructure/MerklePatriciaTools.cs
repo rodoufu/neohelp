@@ -90,15 +90,16 @@
         /// </summary>
         /// <param name="hexchar">Byte to be converted.</param>
         /// <returns>The converted string.</returns>
-        public static string ByteToHexString(this byte hexchar) => hexchar.ToString("x2");
+        public static string ByteToHexString(this byte hexchar, bool forceTwoChars = true) =>
+            hexchar.ToString("x" + (forceTwoChars ? "2" : ""));
 
         /// <summary>
         /// Converts a byte array to an hexadecimal string.
         /// </summary>
         /// <param name="hexchar">Byte array to be converted.</param>
         /// <returns>The converted string.</returns>
-        public static string ByteToHexString(this byte[] hexchar, bool useSpace = true) =>
-            string.Join(useSpace ? " " : "", hexchar.Select(x => x.ByteToHexString()).ToList());
+        public static string ByteToHexString(this byte[] hexchar, bool useSpace = true, bool forceTwoChars = true) =>
+            string.Join(useSpace ? " " : "", hexchar.Select(x => x.ByteToHexString(forceTwoChars)).ToList());
 
         /// <summary>
         /// Converts a string to SHA256.
@@ -106,13 +107,13 @@
         /// <param name="randomString">String to be converted.</param>
         /// <param name="uppercase">Use uppercase charecters.</param>
         /// <returns>The converted string.</returns>
-        public static string Sha256(this string randomString, bool uppercase = false)
+        public static string Sha256(this string randomString, bool uppercase = false, bool forceTwoChars = true)
         {
             var crypt = new SHA256Managed();
             var hash = new StringBuilder();
             foreach (var theByte in crypt.ComputeHash(Encoding.UTF8.GetBytes(randomString)))
             {
-                hash.Append(theByte.ToString(uppercase ? "X2" : "x2"));
+                hash.Append(theByte.ToString((uppercase ? "X" : "x") + (forceTwoChars ? "2" : "")));
             }
 
             return hash.ToString();

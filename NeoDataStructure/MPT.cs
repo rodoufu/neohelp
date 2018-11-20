@@ -9,14 +9,23 @@ namespace com.github.neoresearch.NeoDataStructure
         private byte[] _rootHash;
         private readonly Dictionary<byte[], MPTNode> _db = new Dictionary<byte[], MPTNode>();
 
+        public string this[string key]
+        {
+            get
+            {
+                var resp = this[Encoding.UTF8.GetBytes(key)];
+                return resp == null ? null : Encoding.UTF8.GetString(resp);
+            }
+            set => this[Encoding.UTF8.GetBytes(key)] = value != null ? Encoding.UTF8.GetBytes(value) : null;
+        }
+
         public byte[] this[byte[] key]
         {
-//            get => _rootHash == null ? null : Get(_db[_rootHash], ConvertToNibble(key));
-            get => _rootHash == null ? null : _rootHash;
+            get => _rootHash == null ? null : Get(_db[_rootHash], ConvertToNibble(key));
             set
             {
                 var node = _rootHash == null ? null : _db[_rootHash];
-                if (_rootHash != null && _db.ContainsKey(_rootHash))
+                if (_rootHash != null)
                 {
                     _db.Remove(_rootHash);
                 }
@@ -37,126 +46,279 @@ namespace com.github.neoresearch.NeoDataStructure
             return resp;
         }
 
-        public string this[string key]
-        {
-            get => Encoding.Default.GetString(this[Encoding.UTF8.GetBytes(key)]);
-            set => this[Encoding.UTF8.GetBytes(key)] = Encoding.UTF8.GetBytes(value);
-        }
-
-        private byte[] Set(ExtensionNode node, byte[] path, byte[] key, byte[] value)
-        {
-            /*
-            if (path.Length == 0)
-            {
-                var newNode = new BranchNode
-                {
-                    Key = key,
-                    Value = value
-                };
-                var nodeHash = Set(newNode, node.Path, node.Key, node.Value);
-                node = _db[nodeHash];
-            }
-            else if (node.Path == path)
-            {
-                node.Key = key;
-                node.Value = value;
-            }
-            else if (node.Path[0] == path[0])
-            {
-                for (var pos = 0;; pos++)
-                {
-                    if (pos + 1 != node.Path.Length && pos + 1 != path.Length &&
-                        node.Path[pos + 1] == path[pos + 1]) continue;
-                    var newNode = new MPTNode {Path = path.Take(pos + 1).ToArray()};
-                    var innerHash = Set(new MPTNode(true), node.Path.Skip(pos + 1).ToArray(), node.Key,
-                        node.Value);
-                    var innerNode = _db[innerHash];
-                    _db.Remove(innerHash);
-                    newNode[1] = Set(innerNode, path.Skip(pos + 1).ToArray(), key, value);
-                    node = newNode;
-                    break;
-                }
-            }
-            else
-            {
-                var newNode = new MPTNode {Path = path.Take(pos + 1).ToArray()};
-                var innerHash = Set(new MPTNode(true), node.Path.Skip(pos + 1).ToArray(), node.Key, node.Value);
-                var innerNode = _db[innerHash];
-                _db.Remove(innerHash);
-                newNode[1] = Set(innerNode, path.Skip(pos + 1).ToArray(), key, value);
-                node = newNode;
-            }
-            */
-
-            var tempHash = node.Hash();
-            _db[tempHash] = node;
-            return tempHash;
-        }
-
-        private byte[] Set(LeafNode node, byte[] path, byte[] key, byte[] value)
-        {
-            var tempHash = node.Hash();
-            _db[tempHash] = node;
-            return tempHash;
-        }
-
-        private byte[] Set(BranchNode node, byte[] path, byte[] key, byte[] value)
-        {
-            if (path.Length == 0)
-            {
-                node.Key = key;
-                node.Value = value;
-            }
-            else
-            {
-                var innerHash = node[path[0]];
-                var innerNode = innerHash != null ? _db[innerHash] : null;
-                if (innerHash != null && _db.ContainsKey(innerHash))
-                {
-                    _db.Remove(innerHash);
-                }
-
-                node[path[0]] = Set(innerNode, path.Skip(1).ToArray(), key, value);
-            }
-
-            var tempHash = node.Hash();
-            _db[tempHash] = node;
-            return tempHash;
-        }
-
         private byte[] Set(MPTNode node, byte[] path, byte[] key, byte[] value)
         {
             if (node == null)
             {
-                node = new LeafNode
+                node = MPTNode.LeafNode();
+                node.Path = path;
+                node.Key = key;
+                node.Value = value;
+            }
+            else if (node.IsLeaf)
+            {
+                if (path.Length == 0 || path.SequenceEqual(node.Path))
                 {
-                    Path = path,
-                    Key = key,
-                    Value = value
-                };
+                    node.Key = key;
+                    node.Value = value;
+                }
+                else if (path[0] == node.Path[0])
+                {
+                    for (var pos = 0;; pos++)
+                    {
+                        if (pos + 1 == path.Length || pos + 1 == node.Path.Length ||
+                            path[pos + 1] != node.Path[pos + 1])
+                        {
+                            var innerNode = MPTNode.ExtensionNode();
+                            innerNode.Path = path.Take(pos + 1).ToArray();
+                            innerNode.Next = Set(MPTNode.BranchNode(), node.Path.Skip(pos + 1).ToArray(), node.Key,
+                                node.Value);
+                            node = innerNode;
+                            innerNode = _db[node.Next];
+                            node.Next = Set(innerNode, path.Skip(pos + 1).ToArray(), key, value);
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    var innerHash = Set(MPTNode.BranchNode(), node.Path, node.Key, node.Value);
+                    node = _db[innerHash];
+                    _db.Remove(innerHash);
+                    innerHash = Set(node, path, key, value);
+                    node = _db[innerHash];
+                    _db.Remove(innerHash);
+                }
+            }
+            else if (node.IsExtension)
+            {
+                if (path.Length == 0 || path.SequenceEqual(node.Path))
+                {
+                    var innerHash = node.Next;
+                    var innerNode = _db[innerHash];
+                    _db.Remove(innerHash);
+                    node.Next = Set(innerNode, new byte[0], key, value);
+                }
+                else if (path[0] == node.Path[0])
+                {
+                    for (var pos = 0;; pos++)
+                    {
+                        if (pos + 1 == node.Path.Length)
+                        {
+                            var innerHash = node.Next;
+                            node.Next = Set(_db[innerHash], path.Skip(pos + 1).ToArray(), key, value);
+                            _db.Remove(innerHash);
+                            break;
+                        }
+
+                        if (pos + 1 == path.Length)
+                        {
+                            var newHash = Set(MPTNode.BranchNode(), new byte[0], key, value);
+                            var newNode = _db[newHash];
+                            _db.Remove(newHash);
+                            newNode[node.Path[pos + 1]] = node.Next;
+                            node.Path = node.Path.Skip(pos + 1).ToArray();
+                            node = newNode;
+                            break;
+                        }
+
+                        if (path[pos + 1] != node.Path[pos + 1])
+                        {
+                            var newHash = Set(MPTNode.BranchNode(), path.Skip(pos + 1).ToArray(), key, value);
+                            var newNode = _db[newHash];
+                            _db.Remove(newHash);
+                            newNode[node.Path[pos + 1]] = node.Next;
+                            node.Path = node.Path.Skip(pos + 1).ToArray();
+                            node = newNode;
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    var newHash = Set(MPTNode.BranchNode(), path, key, value);
+                    var newNode = _db[newHash];
+                    _db.Remove(newHash);
+                    newNode[node.Path[1]] = node.Next;
+                    node.Path = node.Path.Skip(1).ToArray();
+                    node = newNode;
+                }
+            }
+            else
+            {
+                if (path.Length == 0)
+                {
+                    node.Key = key;
+                    node.Value = value;
+                }
+                else
+                {
+                    var innerHash = node[path[0]];
+                    var innerNode = innerHash != null ? _db[innerHash] : null;
+                    if (innerHash != null)
+                    {
+                        _db.Remove(innerHash);
+                    }
+
+                    node[path[0]] = Set(innerNode, path.Skip(1).ToArray(), key, value);
+                }
             }
 
-            var tempHash = node.Hash();
-            _db[tempHash] = node;
-            return tempHash;
+            var hashNode = node.Hash();
+            _db[hashNode] = node;
+            return hashNode;
         }
 
-        public override string ToString() => _rootHash == null ? "{}" : $"{ToString(_db[_rootHash])}";
+        private byte[] Get(MPTNode node, byte[] path)
+        {
+            if (node == null)
+            {
+                return null;
+            }
+
+            if (node.IsLeaf)
+            {
+                if (path.Length == 0)
+                {
+                    return node.Value;
+                }
+
+                return node.Path.SequenceEqual(path) ? node.Value : null;
+            }
+
+            if (path.Length == 0 && !node.IsExtension)
+            {
+                return node.Value;
+            }
+
+            if (node.IsExtension)
+            {
+                if (path.SequenceEqual(node.Path))
+                {
+                    return Get(_db[node.Next], new byte[0]);
+                }
+
+                if (node.Path.Length < path.Length && path.Take(node.Path.Length).ToArray().SequenceEqual(node.Path))
+                {
+                    return Get(_db[node.Next], path.Skip(node.Path.Length).ToArray());
+                }
+
+                return null;
+            }
+
+            // Branch node
+            return node[path[0]] != null ? Get(_db[node[path[0]]], path.Skip(1).ToArray()) : null;
+        }
+
+        /// <summary>
+        /// Test if contains a specific key.
+        /// </summary>
+        /// <param name="key">Key to be tested.</param>
+        /// <returns>true in the case the tree contains the key.</returns>
+        public bool ContainsKey(string key) => this[key] != null;
+
+        public bool Remove(string key) => Remove(Encoding.UTF8.GetBytes(key));
+
+        public bool Remove(byte[] key)
+        {
+            if (_rootHash == null)
+            {
+                return false;
+            }
+
+            var removido = Remove(_rootHash, ConvertToNibble(key));
+            var resp = removido != _rootHash;
+            if (resp)
+            {
+                _db.Remove(_rootHash);
+            }
+
+            _rootHash = removido;
+            return resp;
+        }
+
+        private byte[] Remove(byte[] nodeHash, byte[] path)
+        {
+            if (nodeHash == null)
+            {
+                return null;
+            }
+
+            var node = _db[nodeHash];
+            if (node.IsLeaf)
+            {
+                if (node.Path == path)
+                {
+                    _db.Remove(nodeHash);
+                    return null;
+                }
+
+                _db[nodeHash] = node;
+                return nodeHash;
+            }
+
+            if (node.IsExtension)
+            {
+                if (path.Length == 0)
+                {
+                    node.Next = Remove(node.Next, new byte[0]);
+                }
+                else if (path.Length >= node.Path.Length &&
+                         path.Take(node.Path.Length).ToArray().SequenceEqual(node.Path))
+                {
+                    node.Next = Remove(node.Next, path.Skip(node.Path.Length).ToArray());
+                }
+                else
+                {
+                    _db[nodeHash] = node;
+                    return nodeHash;
+                }
+            }
+            else if (node.IsBranch)
+            {
+                if (path.Length == 0)
+                {
+                    node.Key = null;
+                    node.Value = null;
+                }
+
+                if (node[path[0]] != null)
+                {
+                    node[path[0]] = Remove(node[path[0]], path.Skip(1).ToArray());
+                }
+                else
+                {
+                    return nodeHash;
+                }
+            }
+
+            nodeHash = node.Hash();
+            _db[nodeHash] = node;
+            return nodeHash;
+        }
+
+
+        public override string ToString() => _rootHash == null ? "{}" : ToString(_db[_rootHash]);
 
         private string ToString(MPTNode node)
         {
-            if (node is LeafNode || node is ExtensionNode)
+            if (node.IsExtension)
+            {
+                return $"{{\"{node.Path.ByteToHexString(false, false)}\": {ToString(_db[node.Next])}}}";
+            }
+
+            if (node.IsLeaf)
             {
                 return node.ToString();
             }
 
             var resp = new StringBuilder("{");
+            var virgula = false;
             for (var i = 0; i < node.Length; i++)
             {
-                if (node[i] != null)
-                {
-                    resp.Append($"\"{i}\":{ToString(_db[node[i]])}");
-                }
+                if (node[i] == null) continue;
+                resp.Append(virgula ? "," : "").Append($"\"{i:x}\":{ToString(_db[node[i]])}");
+                virgula = true;
             }
 
             return resp.Append("}").ToString();
