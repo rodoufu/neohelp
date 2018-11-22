@@ -50,9 +50,9 @@ namespace com.github.neoresearch.NeoDataStructureTest
             mp["orfanato"] = "crianças";
             Assert.Equal("crianças", mp["orfanato"]);
 
-//            merklePatricia.Remove("orfanato");
+            Assert.True(mp.Remove("orfanato"));
             Assert.Equal("criança", mp["orfão"]);
-//            Assert.False(merklePatricia.ContainsKey("orfanato"));
+            Assert.False(mp.ContainsKey("orfanato"));
 
             mp["orfã"] = "menina";
             Assert.Equal("menina", mp["orfã"]);

@@ -34,7 +34,7 @@ namespace com.github.neoresearch.NeoDataStructure
             }
         }
 
-        private byte[] ConvertToNibble(byte[] key)
+        private static byte[] ConvertToNibble(byte[] key)
         {
             var resp = new byte[key.Length * 2];
             for (var i = 0; i < key.Length; i++)
@@ -259,11 +259,7 @@ namespace com.github.neoresearch.NeoDataStructure
 
             if (node.IsExtension)
             {
-                if (path.Length == 0)
-                {
-                    node.Next = Remove(node.Next, new byte[0]);
-                }
-                else if (path.Length >= node.Path.Length &&
+                if (path.Length >= node.Path.Length &&
                          path.Take(node.Path.Length).ToArray().SequenceEqual(node.Path))
                 {
                     node.Next = Remove(node.Next, path.Skip(node.Path.Length).ToArray());
@@ -285,6 +281,42 @@ namespace com.github.neoresearch.NeoDataStructure
                 if (node[path[0]] != null)
                 {
                     node[path[0]] = Remove(node[path[0]], path.Skip(1).ToArray());
+                    
+                    var contar = 0;
+                    var indexInnerNode = 0;
+                    for (var i = 0; i < node.Length - 2; i++)
+                    {
+                        if (node[i] != null)
+                        {
+                            contar++;
+                            indexInnerNode = i;
+                        }
+                    }
+
+                    if (contar == 0)
+                    {
+                        var newNode = MPTNode.LeafNode();
+                        newNode.Path = new byte[0];
+                        newNode.Key = node.Key;
+                        newNode.Value = node.Value;
+                        node = newNode;
+                    }
+                    else if (contar == 1)
+                    {
+                        if (node[node.Length - 1] == null)
+                        {
+                            var innerNodeHash = node[indexInnerNode];
+                            var innerNode = _db[innerNodeHash];
+                            if (innerNode.IsLeaf)
+                            {
+                                _db.Remove(innerNodeHash);
+                                node = MPTNode.LeafNode();
+                                node.Path = innerNode.Path.Skip(1).ToArray();
+                                node.Key = innerNode.Key;
+                                node.Value = innerNode.Value;
+                            }
+                        }
+                    }
                 }
                 else
                 {
